@@ -7,11 +7,35 @@
   <style>
     * { box-sizing: border-box; }
 
+    :root {
+      --bg: #111;
+      --panel: #1a1a1a;
+      --panel-2: #181818;
+      --border: #333;
+      --text: #eee;
+      --muted: #aaa;
+      --input: #0d0d0d;
+      --hover: #2a2a2a;
+      --button: #2d6cdf;
+    }
+
+    body.light {
+      --bg: #f5f5f5;
+      --panel: #ffffff;
+      --panel-2: #f0f0f0;
+      --border: #d0d0d0;
+      --text: #111;
+      --muted: #555;
+      --input: #ffffff;
+      --hover: #e8e8e8;
+      --button: #2563eb;
+    }
+
     body {
       margin: 0;
       font-family: Arial, sans-serif;
-      background: #111;
-      color: #eee;
+      background: var(--bg);
+      color: var(--text);
     }
 
     .app {
@@ -21,8 +45,8 @@
     }
 
     .sidebar {
-      background: #1a1a1a;
-      border-right: 1px solid #333;
+      background: var(--panel);
+      border-right: 1px solid var(--border);
       padding: 12px;
       overflow: auto;
     }
@@ -38,11 +62,11 @@
       margin-bottom: 12px;
     }
 
-    .project-controls input {
+    .project-controls input, textarea, .command-input {
       width: 100%;
-      background: #0d0d0d;
-      color: #eee;
-      border: 1px solid #333;
+      background: var(--input);
+      color: var(--text);
+      border: 1px solid var(--border);
       padding: 9px 10px;
       border-radius: 6px;
     }
@@ -58,12 +82,12 @@
 
     .project-name {
       font-size: 12px;
-      color: #aaa;
+      color: var(--muted);
       margin-bottom: 10px;
       word-break: break-word;
     }
 
-    .tree-row {
+    .tree-row, .tab {
       display: flex;
       align-items: center;
       gap: 6px;
@@ -74,18 +98,19 @@
     }
 
     .tree-row:hover,
-    .tree-row.active {
-      background: #2a2a2a;
+    .tree-row.active,
+    .tab.active {
+      background: var(--hover);
     }
 
     .tree-children {
       margin-left: 16px;
-      border-left: 1px solid #2b2b2b;
+      border-left: 1px solid var(--border);
       padding-left: 8px;
     }
 
     .muted {
-      color: #999;
+      color: var(--muted);
       font-size: 12px;
     }
 
@@ -101,17 +126,35 @@
       align-items: center;
       gap: 8px;
       padding: 0 12px;
-      background: #181818;
-      border-bottom: 1px solid #333;
+      background: var(--panel-2);
+      border-bottom: 1px solid var(--border);
     }
 
     .filename {
       flex: 1;
       font-size: 14px;
-      color: #ccc;
+      color: var(--muted);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+      overflow-x: auto;
+    }
+
+    .tab {
+      white-space: nowrap;
+      background: transparent;
+      border: 1px solid var(--border);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 13px;
     }
 
     .editor {
@@ -121,17 +164,17 @@
 
     .bottom-panel {
       height: 190px;
-      border-top: 1px solid #333;
-      background: #0f0f0f;
+      border-top: 1px solid var(--border);
+      background: var(--input);
       display: flex;
       flex-direction: column;
     }
 
     .bottom-panel-header {
       padding: 8px 12px;
-      border-bottom: 1px solid #333;
+      border-bottom: 1px solid var(--border);
       font-size: 13px;
-      color: #bbb;
+      color: var(--muted);
     }
 
     .terminal-output {
@@ -144,8 +187,8 @@
     }
 
     .right {
-      background: #1a1a1a;
-      border-left: 1px solid #333;
+      background: var(--panel);
+      border-left: 1px solid var(--border);
       padding: 12px;
       display: flex;
       flex-direction: column;
@@ -153,15 +196,9 @@
     }
 
     textarea {
-      width: 100%;
       min-height: 120px;
       resize: vertical;
-      background: #0d0d0d;
-      color: #eee;
-      border: 1px solid #333;
-      padding: 10px;
       font-family: inherit;
-      border-radius: 6px;
     }
 
     pre {
@@ -169,15 +206,15 @@
       margin: 0;
       overflow: auto;
       white-space: pre-wrap;
-      background: #0d0d0d;
-      border: 1px solid #333;
+      background: var(--input);
+      border: 1px solid var(--border);
       padding: 10px;
       font-size: 13px;
       border-radius: 6px;
     }
 
     button {
-      background: #2d6cdf;
+      background: var(--button);
       color: white;
       border: none;
       padding: 9px 12px;
@@ -187,6 +224,49 @@
 
     button:hover {
       opacity: 0.92;
+    }
+
+    .command-palette-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      display: none;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 80px;
+      z-index: 9999;
+    }
+
+    .command-palette {
+      width: min(700px, 92vw);
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+    }
+
+    .command-results {
+      max-height: 360px;
+      overflow: auto;
+    }
+
+    .command-item {
+      padding: 10px 12px;
+      cursor: pointer;
+      border-top: 1px solid var(--border);
+    }
+
+    .command-item:hover,
+    .command-item.active {
+      background: var(--hover);
+    }
+
+    .shortcut-hint {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
+      line-height: 1.5;
     }
   </style>
 </head>
@@ -205,6 +285,17 @@
 
       <div id="projectName" class="project-name">No project loaded</div>
       <div id="treeRoot"></div>
+
+      <div class="shortcut-hint">
+        Ctrl/Cmd+P → Quick Open<br>
+        Ctrl/Cmd+Shift+P → Command Palette<br>
+        Ctrl/Cmd+S → Save<br>
+        Ctrl/Cmd+Enter → Run<br>
+        Ctrl/Cmd+I → Ask AI<br>
+        Ctrl/Cmd+B → Toggle Sidebar<br>
+        Ctrl/Cmd+J → Toggle Terminal<br>
+        Ctrl/Cmd+W → Close Tab
+      </div>
     </aside>
 
     <section class="main">
@@ -212,23 +303,32 @@
         <div class="filename" id="currentFile">No file open</div>
         <button id="saveBtn">Save</button>
         <button id="runBtn">Run</button>
+        <button id="themeBtn">Toggle Theme</button>
       </div>
 
+      <div id="tabs" class="tabs"></div>
       <div id="editor" class="editor"></div>
 
-      <div class="bottom-panel">
+      <div id="terminalPanel" class="bottom-panel">
         <div class="bottom-panel-header">Terminal Output</div>
         <div id="terminalOutput" class="terminal-output"></div>
       </div>
     </section>
 
-    <aside class="right">
+    <aside id="rightPanel" class="right">
       <h3>AI Assistant</h3>
       <textarea id="instruction" placeholder="Ask AI to refactor, fix bugs, add typing, explain, etc."></textarea>
       <button id="askBtn">Ask AI</button>
       <button id="applyBtn">Apply AI Result</button>
       <pre id="aiResponse"></pre>
     </aside>
+  </div>
+
+  <div id="paletteOverlay" class="command-palette-overlay">
+    <div class="command-palette">
+      <input id="paletteInput" class="command-input" placeholder="Type a command or file name..." />
+      <div id="paletteResults" class="command-results"></div>
+    </div>
   </div>
 
   <script type="module">
@@ -248,12 +348,23 @@
     const aiResponseEl = document.getElementById('aiResponse')
     const saveBtn = document.getElementById('saveBtn')
     const runBtn = document.getElementById('runBtn')
+    const themeBtn = document.getElementById('themeBtn')
     const askBtn = document.getElementById('askBtn')
     const applyBtn = document.getElementById('applyBtn')
+    const tabsEl = document.getElementById('tabs')
+    const rightPanelEl = document.getElementById('rightPanel')
+    const terminalPanelEl = document.getElementById('terminalPanel')
+
+    const paletteOverlay = document.getElementById('paletteOverlay')
+    const paletteInput = document.getElementById('paletteInput')
+    const paletteResults = document.getElementById('paletteResults')
 
     let currentFile = null
     let lastAIResponse = ''
     let activeFileEl = null
+    let allFiles = []
+    let openTabs = []
+    let paletteMode = 'commands'
 
     const editor = monaco.editor.create(document.getElementById('editor'), {
       value: '',
@@ -263,6 +374,20 @@
       minimap: { enabled: false },
       fontSize: 14
     })
+
+    const commands = [
+      { id: 'save', label: 'File: Save', run: () => saveFile() },
+      { id: 'run', label: 'Run: Run Current File', run: () => runFile() },
+      { id: 'ask-ai', label: 'AI: Ask AI About Current File', run: () => askAI() },
+      { id: 'apply-ai', label: 'AI: Apply AI Result', run: () => applyAI() },
+      { id: 'toggle-theme', label: 'View: Toggle Theme', run: () => toggleTheme() },
+      { id: 'toggle-sidebar', label: 'View: Toggle Sidebar', run: () => toggleSidebar() },
+      { id: 'toggle-terminal', label: 'View: Toggle Terminal', run: () => toggleTerminal() },
+      { id: 'quick-open', label: 'Go: Quick Open File', run: () => showPalette('files') },
+      { id: 'close-tab', label: 'File: Close Current Tab', run: () => closeCurrentTab() },
+      { id: 'pick-folder', label: 'File: Pick Project Folder', run: () => pickProject() },
+      { id: 'open-path', label: 'File: Open Project By Path', run: () => openProjectByPath() },
+    ]
 
     function getLanguageFromPath(path) {
       if (path.endsWith('.py')) return 'python'
@@ -275,11 +400,42 @@
       return 'plaintext'
     }
 
+    function toggleTheme() {
+      const isLight = document.body.classList.toggle('light')
+      monaco.editor.setTheme(isLight ? 'vs' : 'vs-dark')
+      localStorage.setItem('ide-theme', isLight ? 'light' : 'dark')
+    }
+
+    function applySavedTheme() {
+      const theme = localStorage.getItem('ide-theme') || 'dark'
+      if (theme === 'light') {
+        document.body.classList.add('light')
+        monaco.editor.setTheme('vs')
+      }
+    }
+
+    function toggleSidebar() {
+      const sidebar = document.querySelector('.sidebar')
+      sidebar.style.display = sidebar.style.display === 'none' ? 'block' : 'none'
+      document.querySelector('.app').style.gridTemplateColumns =
+        sidebar.style.display === 'none' ? '0 1fr 360px' : '280px 1fr 360px'
+    }
+
+    function toggleTerminal() {
+      terminalPanelEl.style.display = terminalPanelEl.style.display === 'none' ? 'flex' : 'none'
+    }
+
     async function fetchProjectInfo() {
       const res = await fetch(API + '/project')
       const data = await res.json()
       projectNameEl.textContent = `${data.name} — ${data.root}`
       projectPathInput.value = data.root
+    }
+
+    async function fetchFiles() {
+      const res = await fetch(API + '/files')
+      const data = await res.json()
+      allFiles = data.files || []
     }
 
     async function openProjectByPath() {
@@ -296,22 +452,17 @@
       })
 
       const data = await res.json()
-
       if (data.detail) {
         alert(data.detail)
         return
       }
 
       resetOpenState()
-      await fetchProjectInfo()
-      await loadTree()
+      await refreshProject()
     }
 
     async function pickProject() {
-      const res = await fetch(API + '/pick-project', {
-        method: 'POST'
-      })
-
+      const res = await fetch(API + '/pick-project', { method: 'POST' })
       const data = await res.json()
 
       if (data.detail) {
@@ -320,7 +471,12 @@
       }
 
       resetOpenState()
+      await refreshProject()
+    }
+
+    async function refreshProject() {
       await fetchProjectInfo()
+      await fetchFiles()
       await loadTree()
     }
 
@@ -331,6 +487,8 @@
       terminalOutputEl.textContent = ''
       aiResponseEl.textContent = ''
       lastAIResponse = ''
+      openTabs = []
+      renderTabs()
 
       if (activeFileEl) {
         activeFileEl.classList.remove('active')
@@ -386,6 +544,41 @@
       }
     }
 
+    function ensureTab(path) {
+      if (!openTabs.includes(path)) {
+        openTabs.push(path)
+      }
+      renderTabs()
+    }
+
+    function renderTabs() {
+      tabsEl.innerHTML = ''
+      openTabs.forEach(path => {
+        const tab = document.createElement('div')
+        tab.className = 'tab' + (path === currentFile ? ' active' : '')
+        tab.textContent = path.split('/').pop()
+        tab.title = path
+        tab.onclick = () => openFile(path)
+        tabsEl.appendChild(tab)
+      })
+    }
+
+    function closeCurrentTab() {
+      if (!currentFile) return
+      const idx = openTabs.indexOf(currentFile)
+      if (idx >= 0) openTabs.splice(idx, 1)
+
+      if (openTabs.length > 0) {
+        const next = openTabs[Math.max(0, idx - 1)] || openTabs[0]
+        openFile(next)
+      } else {
+        currentFile = null
+        currentFileEl.textContent = 'No file open'
+        editor.setValue('')
+        renderTabs()
+      }
+    }
+
     async function openFile(path, rowEl = null) {
       const res = await fetch(API + '/read', {
         method: 'POST',
@@ -394,7 +587,6 @@
       })
 
       const data = await res.json()
-
       if (data.detail) {
         alert(data.detail)
         return
@@ -404,6 +596,7 @@
       currentFileEl.textContent = path
       editor.setValue(data.content || '')
       monaco.editor.setModelLanguage(editor.getModel(), getLanguageFromPath(path))
+      ensureTab(path)
 
       if (activeFileEl) activeFileEl.classList.remove('active')
       if (rowEl) {
@@ -432,8 +625,7 @@
         alert(data.detail)
         return
       }
-
-      alert(data.status || 'Saved')
+      terminalOutputEl.textContent = 'Saved: ' + currentFile
     }
 
     async function runFile() {
@@ -451,7 +643,6 @@
       })
 
       const data = await res.json()
-
       if (data.detail) {
         terminalOutputEl.textContent = 'Error: ' + data.detail
         return
@@ -487,7 +678,6 @@
       })
 
       const data = await res.json()
-
       if (data.detail) {
         aiResponseEl.textContent = 'Error: ' + data.detail
         return
@@ -505,14 +695,122 @@
       editor.setValue(lastAIResponse)
     }
 
+    function showPalette(mode = 'commands') {
+      paletteMode = mode
+      paletteOverlay.style.display = 'flex'
+      paletteInput.value = ''
+      renderPaletteResults()
+      setTimeout(() => paletteInput.focus(), 0)
+    }
+
+    function hidePalette() {
+      paletteOverlay.style.display = 'none'
+    }
+
+    function renderPaletteResults() {
+      const q = paletteInput.value.trim().toLowerCase()
+      paletteResults.innerHTML = ''
+
+      const items = paletteMode === 'files'
+        ? allFiles
+            .filter(f => f.toLowerCase().includes(q))
+            .slice(0, 50)
+            .map(f => ({ label: f, action: () => { hidePalette(); openFile(f) } }))
+        : commands
+            .filter(c => c.label.toLowerCase().includes(q))
+            .map(c => ({ label: c.label, action: () => { hidePalette(); c.run() } }))
+
+      if (items.length === 0) {
+        const empty = document.createElement('div')
+        empty.className = 'command-item'
+        empty.textContent = 'No results'
+        paletteResults.appendChild(empty)
+        return
+      }
+
+      items.forEach((item, index) => {
+        const div = document.createElement('div')
+        div.className = 'command-item' + (index === 0 ? ' active' : '')
+        div.textContent = item.label
+        div.onclick = item.action
+        paletteResults.appendChild(div)
+      })
+    }
+
+    paletteInput.addEventListener('input', renderPaletteResults)
+
+    paletteInput.addEventListener('keydown', (e) => {
+      const items = [...paletteResults.querySelectorAll('.command-item')]
+      const active = paletteResults.querySelector('.command-item.active')
+      let idx = items.indexOf(active)
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        if (items.length === 0) return
+        if (idx >= 0) items[idx].classList.remove('active')
+        idx = (idx + 1) % items.length
+        items[idx].classList.add('active')
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        if (items.length === 0) return
+        if (idx >= 0) items[idx].classList.remove('active')
+        idx = idx <= 0 ? items.length - 1 : idx - 1
+        items[idx].classList.add('active')
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        active?.click()
+      } else if (e.key === 'Escape') {
+        hidePalette()
+      }
+    })
+
+    paletteOverlay.addEventListener('click', (e) => {
+      if (e.target === paletteOverlay) hidePalette()
+    })
+
+    document.addEventListener('keydown', (e) => {
+      const mod = e.ctrlKey || e.metaKey
+
+      if (mod && e.key.toLowerCase() === 's') {
+        e.preventDefault()
+        saveFile()
+      } else if (mod && e.shiftKey && e.key.toLowerCase() === 'p') {
+        e.preventDefault()
+        showPalette('commands')
+      } else if (mod && e.key.toLowerCase() === 'p') {
+        e.preventDefault()
+        showPalette('files')
+      } else if (mod && e.key.toLowerCase() === 'b') {
+        e.preventDefault()
+        toggleSidebar()
+      } else if (mod && e.key.toLowerCase() === 'j') {
+        e.preventDefault()
+        toggleTerminal()
+      } else if (mod && e.key.toLowerCase() === 'w') {
+        e.preventDefault()
+        closeCurrentTab()
+      } else if (mod && e.key.toLowerCase() === 'i') {
+        e.preventDefault()
+        askAI()
+      } else if (mod && e.key === 'Enter') {
+        e.preventDefault()
+        runFile()
+      } else if (e.key === 'Escape' && paletteOverlay.style.display === 'flex') {
+        hidePalette()
+      }
+    })
+
     openProjectBtn.onclick = openProjectByPath
     pickProjectBtn.onclick = pickProject
     saveBtn.onclick = saveFile
     runBtn.onclick = runFile
+    themeBtn.onclick = toggleTheme
     askBtn.onclick = askAI
     applyBtn.onclick = applyAI
 
+    applySavedTheme()
     await fetchProjectInfo()
+    await fetchFiles()
     await loadTree()
   </script>
 </body>
