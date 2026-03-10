@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI IDE</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #eee;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 280px 1fr 360px;
+      height: 100vh;
+    }
+
+    .sidebar {
+      background: #1a1a1a;
+      border-right: 1px solid #333;
+      padding: 12px;
+      overflow: auto;
+    }
+
+    .sidebar h3, .right h3 {
+      margin-top: 0;
+    }
+
+    .project-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .project-controls input {
+      width: 100%;
+      background: #0d0d0d;
+      color: #eee;
+      border: 1px solid #333;
+      padding: 9px 10px;
+      border-radius: 6px;
+    }
+
+    .project-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .project-actions button {
+      flex: 1;
+    }
+
+    .project-name {
+      font-size: 12px;
+      color: #aaa;
+      margin-bottom: 10px;
+      word-break: break-word;
+    }
+
+    .tree-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .tree-row:hover,
+    .tree-row.active {
+      background: #2a2a2a;
+    }
+
+    .tree-children {
+      margin-left: 16px;
+      border-left: 1px solid #2b2b2b;
+      padding-left: 8px;
+    }
+
+    .muted {
+      color: #999;
+      font-size: 12px;
+    }
+
+    .main {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .topbar {
+      height: 48px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      background: #181818;
+      border-bottom: 1px solid #333;
+    }
+
+    .filename {
+      flex: 1;
+      font-size: 14px;
+      color: #ccc;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .editor {
+      flex: 1;
+      min-height: 0;
+    }
+
+    .bottom-panel {
+      height: 190px;
+      border-top: 1px solid #333;
+      background: #0f0f0f;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .bottom-panel-header {
+      padding: 8px 12px;
+      border-bottom: 1px solid #333;
+      font-size: 13px;
+      color: #bbb;
+    }
+
+    .terminal-output {
+      flex: 1;
+      overflow: auto;
+      white-space: pre-wrap;
+      font-family: monospace;
+      font-size: 13px;
+      padding: 10px 12px;
+    }
+
+    .right {
+      background: #1a1a1a;
+      border-left: 1px solid #333;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      resize: vertical;
+      background: #0d0d0d;
+      color: #eee;
+      border: 1px solid #333;
+      padding: 10px;
+      font-family: inherit;
+      border-radius: 6px;
+    }
+
+    pre {
+      flex: 1;
+      margin: 0;
+      overflow: auto;
+      white-space: pre-wrap;
+      background: #0d0d0d;
+      border: 1px solid #333;
+      padding: 10px;
+      font-size: 13px;
+      border-radius: 6px;
+    }
+
+    button {
+      background: #2d6cdf;
+      color: white;
+      border: none;
+      padding: 9px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      opacity: 0.92;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <h3>Explorer</h3>
+
+      <div class="project-controls">
+        <input id="projectPathInput" placeholder="Enter project folder path" />
+        <div class="project-actions">
+          <button id="openProjectBtn">Open by Path</button>
+          <button id="pickProjectBtn">Pick Folder</button>
+        </div>
+      </div>
+
+      <div id="projectName" class="project-name">No project loaded</div>
+      <div id="treeRoot"></div>
+    </aside>
+
+    <section class="main">
+      <div class="topbar">
+        <div class="filename" id="currentFile">No file open</div>
+        <button id="saveBtn">Save</button>
+        <button id="runBtn">Run</button>
+      </div>
+
+      <div id="editor" class="editor"></div>
+
+      <div class="bottom-panel">
+        <div class="bottom-panel-header">Terminal Output</div>
+        <div id="terminalOutput" class="terminal-output"></div>
+      </div>
+    </section>
+
+    <aside class="right">
+      <h3>AI Assistant</h3>
+      <textarea id="instruction" placeholder="Ask AI to refactor, fix bugs, add typing, explain, etc."></textarea>
+      <button id="askBtn">Ask AI</button>
+      <button id="applyBtn">Apply AI Result</button>
+      <pre id="aiResponse"></pre>
+    </aside>
+  </div>
+
+  <script type="module">
+    import * as monaco from 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/+esm'
+
+    const API = 'http://127.0.0.1:8000'
+
+    const projectPathInput = document.getElementById('projectPathInput')
+    const openProjectBtn = document.getElementById('openProjectBtn')
+    const pickProjectBtn = document.getElementById('pickProjectBtn')
+    const projectNameEl = document.getElementById('projectName')
+    const treeRootEl = document.getElementById('treeRoot')
+
+    const currentFileEl = document.getElementById('currentFile')
+    const terminalOutputEl = document.getElementById('terminalOutput')
+    const instructionEl = document.getElementById('instruction')
+    const aiResponseEl = document.getElementById('aiResponse')
+    const saveBtn = document.getElementById('saveBtn')
+    const runBtn = document.getElementById('runBtn')
+    const askBtn = document.getElementById('askBtn')
+    const applyBtn = document.getElementById('applyBtn')
+
+    let currentFile = null
+    let lastAIResponse = ''
+    let activeFileEl = null
+
+    const editor = monaco.editor.create(document.getElementById('editor'), {
+      value: '',
+      language: 'python',
+      theme: 'vs-dark',
+      automaticLayout: true,
+      minimap: { enabled: false },
+      fontSize: 14
+    })
+
+    function getLanguageFromPath(path) {
+      if (path.endsWith('.py')) return 'python'
+      if (path.endsWith('.js')) return 'javascript'
+      if (path.endsWith('.ts')) return 'typescript'
+      if (path.endsWith('.json')) return 'json'
+      if (path.endsWith('.html')) return 'html'
+      if (path.endsWith('.css')) return 'css'
+      if (path.endsWith('.md')) return 'markdown'
+      return 'plaintext'
+    }
+
+    async function fetchProjectInfo() {
+      const res = await fetch(API + '/project')
+      const data = await res.json()
+      projectNameEl.textContent = `${data.name} — ${data.root}`
+      projectPathInput.value = data.root
+    }
+
+    async function openProjectByPath() {
+      const folderPath = projectPathInput.value.trim()
+      if (!folderPath) {
+        alert('Enter a project folder path')
+        return
+      }
+
+      const res = await fetch(API + '/open-project', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folder_path: folderPath })
+      })
+
+      const data = await res.json()
+
+      if (data.detail) {
+        alert(data.detail)
+        return
+      }
+
+      resetOpenState()
+      await fetchProjectInfo()
+      await loadTree()
+    }
+
+    async function pickProject() {
+      const res = await fetch(API + '/pick-project', {
+        method: 'POST'
+      })
+
+      const data = await res.json()
+
+      if (data.detail) {
+        alert(data.detail)
+        return
+      }
+
+      resetOpenState()
+      await fetchProjectInfo()
+      await loadTree()
+    }
+
+    function resetOpenState() {
+      currentFile = null
+      currentFileEl.textContent = 'No file open'
+      editor.setValue('')
+      terminalOutputEl.textContent = ''
+      aiResponseEl.textContent = ''
+      lastAIResponse = ''
+
+      if (activeFileEl) {
+        activeFileEl.classList.remove('active')
+        activeFileEl = null
+      }
+    }
+
+    function createTreeNode(node) {
+      const wrapper = document.createElement('div')
+
+      const row = document.createElement('div')
+      row.className = 'tree-row'
+      row.textContent = node.type === 'directory' ? `📁 ${node.name}` : `📄 ${node.name}`
+      wrapper.appendChild(row)
+
+      if (node.type === 'file') {
+        row.onclick = () => openFile(node.path, row)
+      } else {
+        const childrenWrap = document.createElement('div')
+        childrenWrap.className = 'tree-children'
+
+        if (!node.children || node.children.length === 0) {
+          const empty = document.createElement('div')
+          empty.className = 'muted'
+          empty.textContent = 'empty'
+          childrenWrap.appendChild(empty)
+        } else {
+          for (const child of node.children) {
+            childrenWrap.appendChild(createTreeNode(child))
+          }
+        }
+
+        wrapper.appendChild(childrenWrap)
+
+        let expanded = true
+        row.onclick = () => {
+          expanded = !expanded
+          childrenWrap.style.display = expanded ? 'block' : 'none'
+        }
+      }
+
+      return wrapper
+    }
+
+    async function loadTree() {
+      const res = await fetch(API + '/tree')
+      const data = await res.json()
+
+      treeRootEl.innerHTML = ''
+
+      for (const node of data.tree) {
+        treeRootEl.appendChild(createTreeNode(node))
+      }
+    }
+
+    async function openFile(path, rowEl = null) {
+      const res = await fetch(API + '/read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path })
+      })
+
+      const data = await res.json()
+
+      if (data.detail) {
+        alert(data.detail)
+        return
+      }
+
+      currentFile = path
+      currentFileEl.textContent = path
+      editor.setValue(data.content || '')
+      monaco.editor.setModelLanguage(editor.getModel(), getLanguageFromPath(path))
+
+      if (activeFileEl) activeFileEl.classList.remove('active')
+      if (rowEl) {
+        rowEl.classList.add('active')
+        activeFileEl = rowEl
+      }
+    }
+
+    async function saveFile() {
+      if (!currentFile) {
+        alert('Open a file first')
+        return
+      }
+
+      const res = await fetch(API + '/write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          path: currentFile,
+          content: editor.getValue()
+        })
+      })
+
+      const data = await res.json()
+      if (data.detail) {
+        alert(data.detail)
+        return
+      }
+
+      alert(data.status || 'Saved')
+    }
+
+    async function runFile() {
+      if (!currentFile) {
+        alert('Open a file first')
+        return
+      }
+
+      terminalOutputEl.textContent = 'Running...'
+
+      const res = await fetch(API + '/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: currentFile })
+      })
+
+      const data = await res.json()
+
+      if (data.detail) {
+        terminalOutputEl.textContent = 'Error: ' + data.detail
+        return
+      }
+
+      terminalOutputEl.textContent =
+        `Exit Code: ${data.exit_code}\n\n` +
+        `STDOUT:\n${data.stdout || ''}\n` +
+        `STDERR:\n${data.stderr || ''}`
+    }
+
+    async function askAI() {
+      if (!currentFile) {
+        alert('Open a file first')
+        return
+      }
+
+      if (!instructionEl.value.trim()) {
+        alert('Enter an instruction first')
+        return
+      }
+
+      aiResponseEl.textContent = 'Thinking...'
+
+      const res = await fetch(API + '/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instruction: instructionEl.value,
+          code: editor.getValue(),
+          file_path: currentFile
+        })
+      })
+
+      const data = await res.json()
+
+      if (data.detail) {
+        aiResponseEl.textContent = 'Error: ' + data.detail
+        return
+      }
+
+      lastAIResponse = data.response || ''
+      aiResponseEl.textContent = lastAIResponse
+    }
+
+    function applyAI() {
+      if (!lastAIResponse.trim()) {
+        alert('No AI result to apply')
+        return
+      }
+      editor.setValue(lastAIResponse)
+    }
+
+    openProjectBtn.onclick = openProjectByPath
+    pickProjectBtn.onclick = pickProject
+    saveBtn.onclick = saveFile
+    runBtn.onclick = runFile
+    askBtn.onclick = askAI
+    applyBtn.onclick = applyAI
+
+    await fetchProjectInfo()
+    await loadTree()
+  </script>
+</body>
+</html>
